@@ -17,10 +17,6 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 - Windows 10 ou superior
 - Microsoft Outlook instalado
 
-## Capturas de ecrã
-
-(colocar screenshots)
-
 ## Download
 
 Disponível na secção Releases.
