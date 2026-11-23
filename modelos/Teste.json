@@ -1,0 +1,4 @@
+{
+    "subject": "Processo: {PROCESSO}",
+    "body": "Bom dia {NOME},\n\nEste é um teste.\n\nProcesso: {PROCESSO}\n\nData: {DATA}\nHora: {HORA}\nLinha: {LINHA}\n\n"
+}

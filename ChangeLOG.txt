@@ -1,0 +1,11 @@
+EmailBatchPro
+
+Versão 1.0.0
+- Primeira versão pública
+- Envio em lote via Outlook
+- Placeholders dinâmicos
+- Anexos automáticos
+- Assinatura Outlook
+- Guardar/carregar modelos
+- Instalação com Inno Setup
+- Suporte para doações PayPal
