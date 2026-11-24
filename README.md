@@ -1,5 +1,7 @@
 # EmailBatchPro
 
+**Versão 1.0**
+
 Ferramenta para criação e envio de emails personalizados em lote através do Microsoft Outlook.
 
 ## Funcionalidades
@@ -15,7 +17,16 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 ## Requisitos
 
 - Windows 10 ou superior
-- Microsoft Outlook instalado
+- Microsoft Outlook instalado e configurado
+
+## Como funciona
+
+1. Selecione o ficheiro Excel.
+2. O Excel deve conter uma coluna obrigatória chamada EMAIL.
+3. Pode existir uma coluna opcional chamada ANEXOS.
+4. Utilize os placeholders disponíveis para personalizar o assunto e o corpo da mensagem.
+5. Teste com "Pré-visualizar" ou "Testar 1ª linha".
+6. Utilize "Criar todas" para processar todos os registos.
 
 ## Capturas de ecrã
 
@@ -42,6 +53,12 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 ## Download
 
 Disponível na secção Releases.
+
+## Licença
+
+Este projeto é disponibilizado gratuitamente para utilização pessoal e educativa.
+
+Todos os direitos reservados.
 
 ## Apoiar o projeto
 
