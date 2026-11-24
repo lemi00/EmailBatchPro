@@ -17,6 +17,28 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 - Windows 10 ou superior
 - Microsoft Outlook instalado
 
+## Capturas de ecrã
+
+### Janela principal
+
+![Janela principal](images/Foto1.png)
+
+### Excel
+
+![Excel de exemplo](images/Foto2.png)
+
+### Output
+
+![Output](images/Foto3.png)
+
+### Ajuda
+
+![Ajuda](images/Foto4.png)
+
+### Sobre
+
+![Sobre](images/Foto5.png)
+
 ## Download
 
 Disponível na secção Releases.
