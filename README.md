@@ -17,7 +17,7 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 ## Requisitos
 
 - Windows 10 ou superior
-- Microsoft Outlook instalado e configurado
+- Microsoft Outlook instalado e configurado com pelo menos uma conta de email
 
 ## Como funciona
 
@@ -52,7 +52,7 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 
 ## Download
 
-Disponível na secção Releases.
+A versão mais recente pode ser descarregada na secção **Releases** deste repositório.
 
 ## Licença
 
