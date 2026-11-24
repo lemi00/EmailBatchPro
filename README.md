@@ -31,13 +31,13 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 
 ![Output](images/Foto3.png)
 
-### Ajuda
-
-![Ajuda](images/Foto4.png)
-
 ### Sobre
 
-![Sobre](images/Foto5.png)
+![Sobre](images/Foto4.png)
+
+### Ajuda
+
+![Ajuda](images/Foto5.png)
 
 ## Download
 
