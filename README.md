@@ -52,7 +52,7 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 
 ## Download
 
-A versão mais recente pode ser descarregada na secção **Releases** deste repositório.
+➡️ A versão mais recente pode ser descarregada na secção **Releases** deste repositório.
 
 ## Licença
 
