@@ -95,9 +95,30 @@ class EmailBatchGUI:
     def show_about(self):
 
         about = tk.Toplevel(self.root)
+
+        try:
+
+            about.iconbitmap(
+                resource_path(
+                    "EmailBatchPro.ico"
+                )
+            )
+
+        except Exception:
+
+            pass
+
+        about.transient(self.root)
+        about.grab_set()
+        about.focus_set()
         about.title("Sobre o EmailBatchPro")
         about.geometry("550x550")
-        about.resizable(False, False)
+        about.resizable(True, True)
+
+        about.minsize(
+            550,
+            550
+        )
 
         ttk.Label(
             about,
@@ -135,25 +156,55 @@ considere oferecer um café ao programador ☕
         ttk.Label(
             about,
             text=texto,
-            justify="left"
-        ).pack(padx=20, pady=10)
+            justify="left",
+            anchor="w"
+        ).pack(
+            fill="both",
+            expand=True,
+            padx=20,
+            pady=10
+        )
+
+        buttons_frame = ttk.Frame(about)
+
+        buttons_frame.pack(
+            side="bottom",
+            fill="x",
+            pady=10
+        )
 
         ttk.Button(
-            about,
+            buttons_frame,
             text="☕ Oferecer um café",
             command=self.open_paypal
-        ).pack(pady=10)
+        ).pack(
+            side="left",
+            padx=10
+        )
 
         ttk.Button(
-            about,
+            buttons_frame,
             text="Fechar",
             command=about.destroy
-        ).pack(pady=(0,10))
+        ).pack(
+            side="right",
+            padx=10
+        )
 
     def show_help(self):
 
         win = tk.Toplevel(self.root)
+        try:
 
+            win.iconbitmap(
+                resource_path(
+                    "EmailBatchPro.ico"
+                )
+            )
+
+        except Exception:
+
+            pass
         win.title("Ajuda")
 
         win.geometry("700x500")
