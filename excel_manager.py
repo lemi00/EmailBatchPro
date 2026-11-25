@@ -3,6 +3,7 @@ Gestão do ficheiro Excel e substituição de placeholders.
 """
 
 import pandas as pd
+import os
 
 from utils import (
     column_number_to_name,
@@ -194,3 +195,129 @@ class ExcelManager:
             self.load()
 
         return len(self.df.columns)
+
+    # --------------------------------------------------
+    # Validação do Excel
+    # --------------------------------------------------
+
+    def validate_data(
+        self,
+        email_validator=None
+    ):
+
+        if self.df is None:
+            self.load()
+
+        self.validate_required_columns()
+
+        total_rows = len(self.df)
+
+        valid_emails = 0
+
+        empty_email_rows = []
+
+        invalid_email_rows = []
+
+        missing_attachment_rows = []
+
+        validation_records = []
+
+        for idx, row in self.df.iterrows():
+
+            line = idx + 2
+
+            email = str(
+                row["EMAIL"]
+            ).strip()
+
+            if not email:
+
+                empty_email_rows.append(
+                    f"Linha {line}"
+                )
+
+                validation_records.append(
+                    {
+                        "Linha": line,
+                        "Tipo": "Email vazio",
+                        "Valor": ""
+                    }
+                )
+
+                continue
+
+            if (
+                email_validator
+                and
+                email_validator(email)
+            ):
+
+                valid_emails += 1
+
+            else:
+                invalid_email_rows.append(
+                    f"Linha {line}: {email}"
+                )
+
+                validation_records.append(
+                    {
+                        "Linha": line,
+                        "Tipo": "Email inválido",
+                        "Valor": email
+                    }
+                )
+
+            if "ANEXOS" in row.index:
+
+                attachments = str(
+                    row["ANEXOS"]
+                ).strip()
+
+                if attachments:
+
+                    files = [
+                        f.strip()
+                        for f in attachments.split(";")
+                    ]
+
+                    for file in files:
+
+                        if (
+                            file
+                            and
+                            not os.path.exists(file)
+                        ):
+
+                            missing_attachment_rows.append(
+                                f"Linha {line}: {file}"
+                            )
+
+                            validation_records.append(
+                                {
+                                    "Linha": line,
+                                    "Tipo": "Anexo inexistente",
+                                    "Valor": file
+                                }
+                            )
+
+        return {
+
+            "rows":
+                total_rows,
+
+            "valid_emails":
+                valid_emails,
+
+            "empty_email_rows":
+                empty_email_rows,
+
+            "invalid_email_rows":
+                invalid_email_rows,
+
+            "missing_attachment_rows":
+                missing_attachment_rows,
+
+            "validation_records":
+                validation_records
+
+        }

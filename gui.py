@@ -6,6 +6,7 @@ import os
 import sys
 import tkinter as tk
 import webbrowser
+import pandas as pd
 
 from tkinter import ttk
 from tkinter import messagebox
@@ -14,6 +15,7 @@ from tkinter import filedialog
 
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from ttkbootstrap import Style
 
 from config_manager import ConfigManager
 from excel_manager import ExcelManager
@@ -21,8 +23,10 @@ from outlook_manager import OutlookManager
 from logger_manager import LoggerManager
 from template_manager import TemplateManager
 from utils import column_name_to_number
+from utils import current_timestamp
 
-APP_VERSION = "1.0"
+
+APP_VERSION = "1.1.0"
 APP_NAME = "EmailBatchPro"
 
 def resource_path(relative_path):
@@ -42,6 +46,194 @@ def resource_path(relative_path):
 
 class EmailBatchGUI:
 
+    def validate_excel(self):
+
+        try:
+
+            self.excel.load()
+
+            result = (
+                self.excel.validate_data(
+                    self.outlook.is_valid_email
+                )
+            )
+
+            report_file = None
+
+            if result["validation_records"]:
+
+                report_df = pd.DataFrame(
+                    result["validation_records"]
+                )
+
+                report_folder = os.path.dirname(
+                    self.excel.excel_file
+                )
+
+                report_file = os.path.join(
+                    report_folder,
+                    f"validacao_{current_timestamp()}.xlsx"
+                )
+
+                report_df.to_excel(
+                    report_file,
+                    index=False
+                )
+
+            msg = (
+                "Validação concluída\n\n"
+
+                f"Registos: {result['rows']}\n\n"
+
+                f"✓ Emails válidos: "
+                f"{result['valid_emails']}\n"
+
+                f"⚠ Emails vazios: "
+                f"{len(result['empty_email_rows'])}\n"
+
+                f"✗ Emails inválidos: "
+                f"{len(result['invalid_email_rows'])}\n"
+
+                f"⚠ Anexos não encontrados: "
+                f"{len(result['missing_attachment_rows'])}"
+            )
+
+            if result["empty_email_rows"]:
+
+                msg += "\n\nEmails vazios:\n"
+
+                msg += "\n".join(
+                    result["empty_email_rows"]
+                )
+
+            if result["invalid_email_rows"]:
+
+                msg += "\n\nEmails inválidos:\n"
+
+                msg += "\n".join(
+                    result["invalid_email_rows"]
+                )
+
+            if result["missing_attachment_rows"]:
+
+                msg += (
+                    "\n\nAnexos não encontrados:\n"
+                )
+
+                msg += "\n".join(
+                    result[
+                        "missing_attachment_rows"
+                    ]
+                )
+
+            if report_file:
+
+                msg += (
+                    "\n\nRelatório guardado em:\n"
+                    f"{report_file}"
+                )
+
+            result_win = tk.Toplevel(
+                self.root
+            )
+
+            self.set_window_icon(
+                result_win
+            )
+
+            try:
+
+                self.set_window_icon(
+                    result_win
+                )
+
+            except Exception:
+
+                pass
+
+            result_win.title(
+                "Validação Excel"
+            )
+
+            result_win.geometry(
+                "750x550"
+            )
+
+            result_win.transient(
+                self.root
+            )
+
+            result_win.grab_set()
+
+            txt = tk.Text(
+                result_win,
+                wrap="word"
+            )
+
+            txt.pack(
+                fill="both",
+                expand=True,
+                padx=10,
+                pady=10
+            )
+
+            txt.insert(
+                "1.0",
+                msg
+            )
+
+            txt.config(
+                state="disabled"
+            )
+
+            buttons = ttk.Frame(
+                result_win
+            )
+
+            buttons.pack(
+                fill="x",
+                pady=10
+            )
+
+            buttons = ttk.Frame(
+                result_win
+            )
+
+            buttons.pack(
+                pady=10
+            )
+
+            if report_file:
+
+                ttk.Button(
+                    buttons,
+                    text="Abrir relatório",
+                    command=lambda:
+                    (
+                        os.startfile(report_file),
+                        result_win.destroy()
+                    )
+                ).pack(
+                    side="left",
+                    padx=5
+                )
+
+            ttk.Button(
+                buttons,
+                text="Fechar",
+                command=result_win.destroy
+            ).pack(
+                side="left",
+                padx=5
+            )
+
+        except Exception as e:
+
+            messagebox.showerror(
+                "Validação Excel",
+                str(e)
+            )
+
     def open_paypal(self):
         webbrowser.open(
             "https://paypal.me/mmartins73"
@@ -59,6 +251,13 @@ class EmailBatchGUI:
             themename="litera"
         )
 
+        self.style = Style()
+
+        self.style.configure(
+            "Success.Horizontal.TProgressbar",
+            background="#198754"
+        )
+
         try:
 
             self.root.iconbitmap(
@@ -70,7 +269,7 @@ class EmailBatchGUI:
         except Exception as e:
 
             print(
-                "Erro ícone:",
+                "Erro:",
                 e
             )
 
@@ -78,7 +277,7 @@ class EmailBatchGUI:
             f"{APP_NAME} v{APP_VERSION}"
         )
 
-        self.root.geometry("1100x750")
+        self.root.geometry("1100x850")
 
         self.create_variables()
 
@@ -92,16 +291,203 @@ class EmailBatchGUI:
 
         self.font_name_var.set("Aptos")
 
+    def select_rows(self):
+        try:
+            self.excel.load()
+        except Exception as e:
+            messagebox.showerror(
+                "Selecionar registos",
+                str(e)
+            )
+            return
+
+        # Identifica o ficheiro e o número de registos. Se mudar,
+        # a janela começa novamente com todos selecionados.
+        selection_source = (
+            self.excel_file_var.get(),
+            len(self.excel.df)
+        )
+
+        previous_source = getattr(
+            self,
+            "_row_selection_source",
+            None
+        )
+
+        if previous_source == selection_source:
+            selected = set(self.selected_rows)
+        else:
+            selected = set(range(len(self.excel.df)))
+
+        win = tk.Toplevel(self.root)
+        self.set_window_icon(win)
+        win.title("Selecionar registos")
+        win.geometry("700x600")
+        win.transient(self.root)
+        win.grab_set()
+
+        top_frame = ttk.Frame(win)
+        top_frame.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(top_frame)
+
+        scrollbar = ttk.Scrollbar(
+            top_frame,
+            orient="vertical",
+            command=canvas.yview
+        )
+
+        scroll_frame = ttk.Frame(canvas)
+
+        scroll_frame.bind(
+            "<Configure>",
+            lambda event: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window(
+            (0, 0),
+            window=scroll_frame,
+            anchor="nw"
+        )
+
+        canvas.configure(
+            yscrollcommand=scrollbar.set
+        )
+
+        canvas.pack(
+            side="left",
+            fill="both",
+            expand=True
+        )
+
+        scrollbar.pack(
+            side="right",
+            fill="y"
+        )
+
+        check_vars = []
+
+        ttk.Label(
+            scroll_frame,
+            text="Selecione os registos a processar",
+            font=("Segoe UI", 10, "bold")
+        ).pack(
+            anchor="w",
+            padx=10,
+            pady=10
+        )
+
+        cols = list(self.excel.df.columns[:3])
+
+        # A posição é a mesma usada em self.selected_rows.
+        for position, (_, row) in enumerate(
+            self.excel.df.iterrows()
+        ):
+            var = tk.BooleanVar(
+                master=win,
+                value=(position in selected)
+            )
+            check_vars.append(var)
+
+            parts = [
+                f"{col}: {row[col]}"
+                for col in cols
+            ]
+
+            text = (
+                f"Linha {position + 1} - "
+                + " | ".join(parts)
+            )
+
+            ttk.Checkbutton(
+                scroll_frame,
+                text=text,
+                variable=var
+            ).pack(
+                anchor="w",
+                padx=20,
+                pady=1
+            )
+
+        buttons_frame = ttk.Frame(win)
+        buttons_frame.pack(
+            fill="x",
+            padx=10,
+            pady=10
+        )
+
+        def select_all():
+            for var in check_vars:
+                var.set(True)
+
+        def clear_all():
+            for var in check_vars:
+                var.set(False)
+
+        def save_selection():
+            self.selected_rows = [
+                position
+                for position, var in enumerate(check_vars)
+                if var.get()
+            ]
+
+            self._row_selection_source = selection_source
+            win.destroy()
+
+        ttk.Button(
+            buttons_frame,
+            text="Selecionar todos",
+            command=select_all
+        ).pack(side="left", padx=5)
+
+        ttk.Button(
+            buttons_frame,
+            text="Limpar todos",
+            command=clear_all
+        ).pack(side="left", padx=5)
+
+        ttk.Button(
+            buttons_frame,
+            text="Cancelar",
+            command=win.destroy
+        ).pack(side="right", padx=5)
+
+        ttk.Button(
+            buttons_frame,
+            text="OK",
+            command=save_selection
+        ).pack(side="right", padx=5)
+
+        # Fechar pelo X tem o mesmo efeito que premir OK.
+        win.protocol("WM_DELETE_WINDOW", save_selection)
+
+    def set_window_icon(
+        self,
+        window
+    ):
+
+        try:
+
+            window.iconbitmap(
+                resource_path(
+                    "EmailBatchPro.ico"
+                )
+            )
+
+        except Exception:
+
+            pass
+
     def show_about(self):
 
         about = tk.Toplevel(self.root)
 
         try:
 
-            about.iconbitmap(
-                resource_path(
-                    "EmailBatchPro.ico"
-                )
+            self.set_window_icon(
+                about
             )
 
         except Exception:
@@ -196,10 +582,8 @@ considere oferecer um café ao programador ☕
         win = tk.Toplevel(self.root)
         try:
 
-            win.iconbitmap(
-                resource_path(
-                    "EmailBatchPro.ico"
-                )
+            self.set_window_icon(
+                win
             )
 
         except Exception:
@@ -293,7 +677,6 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
         ).pack(
             pady=10
         )
-
 
     def load_placeholders(self):
 
@@ -409,6 +792,12 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
 
     def create_variables(self):
 
+        self.selection_info_var = tk.StringVar(
+            value="Todos os registos"
+        )
+
+        self.selected_rows = []
+
         self.account_var = tk.StringVar()
 
         self.cc_var = tk.StringVar()
@@ -436,24 +825,11 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
         )
 
     def create_widgets(self):
+        main = ttk.Frame(self.root, padding=10)
+        main.pack(fill="both", expand=True)
 
-        main = ttk.Frame(
-            self.root,
-            padding=10
-        )
-
-        main.pack(
-            fill="both",
-            expand=True
-        )
-
-        ttk.Label(
-            main,
-            text="Conta Outlook"
-        ).grid(
-            row=0,
-            column=0,
-            sticky="ew"
+        ttk.Label(main, text="Conta Outlook").grid(
+            row=0, column=0, sticky="ew"
         )
 
         self.account_combo = ttk.Combobox(
@@ -463,131 +839,70 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
         )
 
         try:
-
-            self.account_combo["values"] = (
-                self.outlook.get_accounts()
-            )
-
+            self.account_combo["values"] = self.outlook.get_accounts()
         except Exception:
-
             pass
 
-        ttk.Label(
-            main,
-            text="Ficheiro Excel"
-        ).grid(
-            row=1,
-            column=0,
-            sticky="ew"
+        self.account_combo.grid(
+            row=0, column=1, sticky="ew", pady=3
+        )
+
+        ttk.Label(main, text="Ficheiro Excel").grid(
+            row=1, column=0, sticky="ew"
         )
 
         ttk.Entry(
             main,
             textvariable=self.excel_file_var
         ).grid(
-            row=1,
-            column=1,
-            sticky="ew",
-            pady=3
+            row=1, column=1, sticky="ew", pady=3
         )
 
-        ttk.Button(
-            main,
-            text="Selecionar...",
-            command=self.select_excel_file
-        ).grid(
-            row=1,
-            column=2,
-            padx=5
-        )
-
-        self.account_combo.grid(
-            row=0,
-            column=1,
-            sticky="ew",
-            pady=3
-        )
-
-        ttk.Label(
-            main,
-            text="CC"
-        ).grid(
-            row=2,
-            column=0,
-            sticky="ew"
+        ttk.Label(main, text="CC").grid(
+            row=2, column=0, sticky="ew"
         )
 
         ttk.Entry(
             main,
             textvariable=self.cc_var
         ).grid(
-            row=2,
-            column=1,
-            sticky="ew",
-            pady=3
+            row=2, column=1, sticky="ew", pady=3
         )
 
-        ttk.Label(
-            main,
-            text="BCC"
-        ).grid(
-            row=3,
-            column=0,
-            sticky="ew"
+        ttk.Label(main, text="BCC").grid(
+            row=3, column=0, sticky="ew"
         )
 
         ttk.Entry(
             main,
             textvariable=self.bcc_var
         ).grid(
-            row=3,
-            column=1,
-            sticky="ew",
-            pady=3
+            row=3, column=1, sticky="ew", pady=3
         )
 
-        ttk.Label(
-            main,
-            text="Assunto"
-        ).grid(
-            row=4,
-            column=0,
-            sticky="ew"
+        ttk.Label(main, text="Assunto").grid(
+            row=4, column=0, sticky="ew"
         )
 
         self.subject_entry = ttk.Entry(
             main,
             textvariable=self.subject_var
         )
-
         self.subject_entry.grid(
-            row=4,
-            column=1,
-            sticky="ew",
-            pady=3
+            row=4, column=1, sticky="ew", pady=3
         )
-
         self.subject_entry.bind(
             "<FocusIn>",
             self.remember_widget
         )
 
-        ttk.Label(
-            main,
-            text="Tipo de letra"
-        ).grid(
-            row=5,
-            column=0,
-            sticky="ew"
+        ttk.Label(main, text="Tipo de letra").grid(
+            row=5, column=0, sticky="ew"
         )
 
         font_frame = ttk.Frame(main)
-
         font_frame.grid(
-            row=5,
-            column=1,
-            sticky="ew",
-            pady=3
+            row=5, column=1, sticky="ew", pady=3
         )
 
         self.font_combo = ttk.Combobox(
@@ -602,28 +917,16 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
                 "Times New Roman"
             ]
         )
-
-        self.font_combo.pack(
-            side="left"
-        )
+        self.font_combo.pack(side="left")
 
         self.font_size_combo = ttk.Combobox(
             font_frame,
             textvariable=self.font_size_var,
             width=5,
-            values=[
-                "10",
-                "11",
-                "12",
-                "13",
-                "14",
-                "16"
-            ]
+            values=["10", "11", "12", "13", "14", "16"]
         )
-
         self.font_size_combo.pack(
-            side="left",
-            padx=(5, 0)
+            side="left", padx=(5, 0)
         )
 
         self.placeholders_frame = ttk.LabelFrame(
@@ -631,12 +934,8 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
             text="Campos disponíveis",
             padding=5
         )
-
         self.placeholders_frame.grid(
-            row=6,
-            column=1,
-            sticky="w",
-            pady=3
+            row=6, column=1, sticky="w", pady=3
         )
 
         text_frame = tk.LabelFrame(
@@ -647,12 +946,8 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
             relief="flat",
             bd=1
         )
-
         text_frame.grid(
-            row=7,
-            column=1,
-            sticky="nsew",
-            pady=5
+            row=7, column=1, sticky="nsew", pady=5
         )
 
         self.body_text = tk.Text(
@@ -661,15 +956,12 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
             height=20,
             bd=0
         )
-
         self.body_text.bind(
             "<FocusIn>",
             self.remember_widget
-)
-
+        )
         self.body_text.pack(
-            fill="both",
-            expand=True
+            fill="both", expand=True
         )
 
         ttk.Checkbutton(
@@ -677,9 +969,7 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
             text="Incluir assinatura Outlook",
             variable=self.include_signature_var
         ).grid(
-            row=8,
-            column=1,
-            sticky="ew"
+            row=8, column=1, sticky="ew"
         )
 
         ttk.Checkbutton(
@@ -687,16 +977,14 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
             text="Enviar diretamente",
             variable=self.send_directly_var
         ).grid(
-            row=9,
-            column=1,
-            sticky="ew"
+            row=9, column=1, sticky="ew"
         )
 
         self.progress = ttk.Progressbar(
             main,
-            orient="horizontal"
+            orient="horizontal",
+            style="Success.Horizontal.TProgressbar"
         )
-
         self.progress.grid(
             row=10,
             column=0,
@@ -705,114 +993,155 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
             pady=10
         )
 
+        # Quatro grupos de botões, em duas colunas.
         buttons = ttk.Frame(main)
-
         buttons.grid(
             row=11,
             column=0,
             columnspan=2,
             sticky="ew"
         )
+        buttons.columnconfigure(0, weight=1, uniform="button_groups")
+        buttons.columnconfigure(1, weight=1, uniform="button_groups")
+
+        excel_group = ttk.LabelFrame(
+            buttons, text="Excel", padding=8
+        )
+        excel_group.grid(
+            row=0, column=0, sticky="nsew", padx=5, pady=5
+        )
+        excel_group.columnconfigure(0, weight=1)
+        excel_group.columnconfigure(1, weight=1)
 
         ttk.Button(
-            buttons,
-            text="Pré-visualizar",
-            command=self.preview_first
-        ).pack(
-            side="left",
-            padx=5
+            excel_group,
+            text="Selecionar Excel",
+            command=self.select_excel_file
+        ).grid(
+            row=0, column=0, sticky="ew", padx=3, pady=3
         )
 
         ttk.Button(
-            buttons,
-            text="Guardar modelo",
-            command=self.save_template
-        ).pack(
-            side="left",
-            padx=5
-        )
-
-        ttk.Button(
-            buttons,
-            text="Carregar modelo",
-            command=self.load_template
-        ).pack(
-            side="left",
-            padx=5
-        )
-
-        ttk.Button(
-            buttons,
+            excel_group,
             text="Atualizar campos",
             command=self.refresh_placeholders
-        ).pack(
-            side="left",
-            padx=5
+        ).grid(
+            row=0, column=1, sticky="ew", padx=3, pady=3
         )
 
         ttk.Button(
-            buttons,
+            excel_group,
+            text="Validar Excel",
+            command=self.validate_excel
+        ).grid(
+            row=1, column=0, sticky="ew", padx=3, pady=3
+        )
+
+        ttk.Button(
+            excel_group,
+            text="Selecionar registos",
+            command=self.select_rows
+        ).grid(
+            row=1, column=1, sticky="ew", padx=3, pady=3
+        )
+
+        tests_group = ttk.LabelFrame(
+            buttons, text="Testes", padding=8
+        )
+        tests_group.grid(
+            row=0, column=1, sticky="nsew", padx=5, pady=5
+        )
+        tests_group.columnconfigure(0, weight=1)
+        tests_group.columnconfigure(1, weight=1)
+
+        ttk.Button(
+            tests_group,
+            text="Pré-visualizar",
+            command=self.preview_first
+        ).grid(
+            row=0, column=0, sticky="ew", padx=3, pady=3
+        )
+
+        ttk.Button(
+            tests_group,
             text="Testar 1ª linha",
             command=self.test_first_row
-        ).pack(
-            side="left",
-            padx=5
+        ).grid(
+            row=0, column=1, sticky="ew", padx=3, pady=3
+        )
+
+        production_group = ttk.LabelFrame(
+            buttons, text="Produção", padding=8
+        )
+        production_group.grid(
+            row=1, column=0, sticky="nsew", padx=5, pady=5
         )
 
         ttk.Button(
-            buttons,
-            text="Sobre",
-            command=self.show_about
-        ).pack(
-            side="left",
-            padx=5
-        )
-
-        ttk.Button(
-            buttons,
-            text="Ajuda",
-            command=self.show_help
-        ).pack(
-            side="left",
-            padx=5
-        )
-
-        ttk.Button(
-            buttons,
+            production_group,
             text="Criar todas",
             command=self.create_all_messages
-        ).pack(
-            side="right",
-            padx=5
+        ).grid(
+            row=0, column=0, sticky="w", padx=3, pady=3
+        )
+
+        tools_group = ttk.LabelFrame(
+            buttons, text="Ferramentas", padding=8
+        )
+        tools_group.grid(
+            row=1, column=1, sticky="nsew", padx=5, pady=5
+        )
+        tools_group.columnconfigure(0, weight=1)
+        tools_group.columnconfigure(1, weight=1)
+
+        ttk.Button(
+            tools_group,
+            text="Guardar modelo",
+            command=self.save_template
+        ).grid(
+            row=0, column=0, sticky="ew", padx=3, pady=3
+        )
+
+        ttk.Button(
+            tools_group,
+            text="Carregar modelo",
+            command=self.load_template
+        ).grid(
+            row=0, column=1, sticky="ew", padx=3, pady=3
+        )
+
+        ttk.Button(
+            tools_group,
+            text="Ajuda",
+            command=self.show_help
+        ).grid(
+            row=1, column=0, sticky="ew", padx=3, pady=3
+        )
+
+        ttk.Button(
+            tools_group,
+            text="Sobre",
+            command=self.show_about
+        ).grid(
+            row=1, column=1, sticky="ew", padx=3, pady=3
         )
 
         main.rowconfigure(7, weight=1)
         main.columnconfigure(1, weight=1)
 
-    def select_excel_file(self):
 
+    def select_excel_file(self):
         filename = filedialog.askopenfilename(
             title="Selecionar ficheiro Excel",
             filetypes=[
-                (
-                    "Ficheiros Excel",
-                    "*.xlsx *.xls"
-                )
+                ("Ficheiros Excel", "*.xlsx *.xls")
             ]
         )
 
         if filename:
-
-            self.excel_file_var.set(
-                filename
-            )
-
+            self.excel_file_var.set(filename)
             self.save_configuration()
-
-            self.excel.excel_file = (
-                filename
-            )
-
+            self.excel.excel_file = filename
             self.load_placeholders()
 
     def remember_widget(
@@ -821,7 +1150,6 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
     ):
 
         self.last_text_widget = event.widget
-        print(event.widget)
 
     def insert_placeholder(
         self,
@@ -1240,24 +1568,29 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
             )
 
     def create_all_messages(self):
-
         try:
-
             self.save_configuration()
-
             self.excel.load()
 
-            total = (
-                self.excel.row_count()
+            selection_source = (
+                self.excel_file_var.get(),
+                len(self.excel.df)
             )
 
-            if total == 0:
+            # Usa a seleção guardada para este ficheiro.
+            # Se ainda não houve seleção, processa todos os registos.
+            if getattr(self, "_row_selection_source", None) == selection_source:
+                rows_to_process = list(self.selected_rows)
+            else:
+                rows_to_process = list(range(self.excel.row_count()))
 
+            total = len(rows_to_process)
+
+            if total == 0:
                 messagebox.showwarning(
                     "Aviso",
-                    "Não existem registos."
+                    "Não existem registos selecionados para processar."
                 )
-
                 return
 
             answer = messagebox.askyesno(
@@ -1270,40 +1603,32 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
 
             self.logger.clear()
 
+            sent_count = 0
+            draft_count = 0
+            error_count = 0
+
             self.progress["value"] = 0
             self.progress["maximum"] = total
 
-            attachments = []
-
-            for i in range(total):
+            for processed, i in enumerate(rows_to_process):
+                recipient = ""
 
                 try:
+                    row = self.excel.get_row(i)
 
-                    row = (
-                        self.excel.get_row(i)
-                    )
-
-                    recipient = str(
-                        row["EMAIL"]
-                    ).strip()
+                    recipient = str(row["EMAIL"]).strip()
 
                     if not recipient:
-
                         self.logger.add_record(
                             i + 1,
                             "",
                             "Ignorado",
                             "Sem destinatário"
                         )
-
                         continue
 
-                    if not (
-                        self.outlook
-                        .is_valid_email(
-                            recipient
-                        )
-                    ):
+                    if not self.outlook.is_valid_email(recipient):
+                        error_count += 1
 
                         self.logger.add_record(
                             i + 1,
@@ -1311,115 +1636,75 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
                             "Erro",
                             "Email inválido"
                         )
-
                         continue
 
-                    subject = (
-                        self.excel
-                        .replace_placeholders(
-                            self.subject_var
-                            .get(),
-                            row,
-                            i + 1,
-                        )
+                    subject = self.excel.replace_placeholders(
+                        self.subject_var.get(),
+                        row,
+                        i + 1
                     )
 
-                    body = (
-                        self.excel
-                        .replace_placeholders(
-                            self.body_text.get(
-                                "1.0",
-                                tk.END
-                            ),
-                            row,
-                            i + 1,
-                        )
+                    body = self.excel.replace_placeholders(
+                        self.body_text.get("1.0", tk.END),
+                        row,
+                        i + 1
                     )
 
-            
                     html_body = (
                         "<div style='"
                         f"font-family:{self.font_name_var.get()};"
                         f"font-size:{self.font_size_var.get()}pt;"
                         "text-align:justify;'>"
-                        + body.replace(
-                            "\n",
-                            "<br>"
-                        )
+                        + body.replace("\n", "<br>")
                         + "</div>"
                     )
 
                     attachments = []
 
                     if "ANEXOS" in row.index:
-
-                        attachments = (
-                            self.outlook.parse_attachment_field(
-                                row["ANEXOS"]
-                            )
+                        attachments = self.outlook.parse_attachment_field(
+                            row["ANEXOS"]
                         )
 
                     valid_files, invalid_files = (
-                        self.outlook
-                        .validate_attachments(
-                            attachments
-                        )
+                        self.outlook.validate_attachments(attachments)
                     )
 
-                    mail = (
-                        self.outlook.create_email(
-                            account_email=
-                            self.account_var.get(),
-
-                            to_email=
-                            recipient,
-
-                            cc=
-                            self.cc_var.get(),
-
-                            bcc=
-                            self.bcc_var.get(),
-
-                            subject=
-                            subject,
-
-                            html_body=
-                            html_body,
-
-                            attachments=
-                            valid_files,
-
-                            include_signature=
-                            self.include_signature_var
-                            .get()
-                        )
+                    mail = self.outlook.create_email(
+                        account_email=self.account_var.get(),
+                        to_email=recipient,
+                        cc=self.cc_var.get(),
+                        bcc=self.bcc_var.get(),
+                        subject=subject,
+                        html_body=html_body,
+                        attachments=valid_files,
+                        include_signature=self.include_signature_var.get()
                     )
 
-                    if (
-                        self.send_directly_var
-                        .get()
-                    ):
-
-                        self.outlook.send_email(
-                            mail
-                        )
-
+                    if self.send_directly_var.get():
+                        self.outlook.send_email(mail)
+                        sent_count += 1
+                        details = "Email enviado"
                     else:
+                        self.outlook.display_email(mail)
+                        draft_count += 1
+                        details = "Email criado para revisão"
 
-                        self.outlook.display_email(
-                            mail
+                    if invalid_files:
+                        details += (
+                            " | Anexos não encontrados: "
+                            + "; ".join(invalid_files)
                         )
 
                     self.logger.add_record(
                         i + 1,
                         recipient,
                         "OK",
-                        "; ".join(
-                            invalid_files
-                        )
+                        details
                     )
 
                 except Exception as err:
+                    error_count += 1
 
                     self.logger.add_record(
                         i + 1,
@@ -1428,21 +1713,59 @@ Utilize sempre "Pré-visualizar" ou "Testar 1ª linha" antes de criar ou enviar 
                         str(err)
                     )
 
-                self.progress["value"] = i + 1
+                finally:
+                    # Atualiza a barra mesmo quando um registo é ignorado.
+                    self.progress["value"] = processed + 1
+                    self.root.update_idletasks()
 
-                self.root.update_idletasks()
+            log_file = self.logger.save_log()
 
-            log_file = (
-                self.logger.save_log()
+            summary = tk.Toplevel(self.root)
+            self.set_window_icon(summary)
+
+            summary.title("Processamento concluído")
+            summary.geometry("500x250")
+            summary.transient(self.root)
+            summary.grab_set()
+
+            msg = (
+                "Processamento concluído\n\n"
+                f"✓ Emails enviados: {sent_count}\n"
+                f"✓ Emails criados para revisão: {draft_count}\n"
+                f"✗ Erros: {error_count}"
             )
 
-            messagebox.showinfo(
-                "Concluído",
-                f"Processamento concluído.\n\nLog:\n{log_file}"
+            ttk.Label(
+                summary,
+                text=msg,
+                justify="left"
+            ).pack(
+                padx=20,
+                pady=20
+            )
+
+            buttons = ttk.Frame(summary)
+            buttons.pack(pady=10)
+
+            ttk.Button(
+                buttons,
+                text="Abrir log",
+                command=lambda: os.startfile(log_file)
+            ).pack(
+                side="left",
+                padx=5
+            )
+
+            ttk.Button(
+                buttons,
+                text="Fechar",
+                command=summary.destroy
+            ).pack(
+                side="left",
+                padx=5
             )
 
         except Exception as e:
-
             messagebox.showerror(
                 "Erro",
                 str(e)

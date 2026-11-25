@@ -4,6 +4,7 @@ Integração com Microsoft Outlook.
 
 import os
 import re
+import time
 
 import pythoncom
 import win32com.client
@@ -295,3 +296,5 @@ class OutlookManager:
     ):
 
         mail.Send()
+
+        time.sleep(1)
