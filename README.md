@@ -50,6 +50,12 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 
 ![Ajuda](images/Foto5.png)
 
+## Compatibilidade
+
+✅ Microsoft Outlook clássico (desktop)
+
+❌ Novo Outlook para Windows
+
 ## Download
 
 ➡️ A versão mais recente pode ser descarregada na secção **Releases** deste repositório.
