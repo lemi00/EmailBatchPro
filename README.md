@@ -32,7 +32,7 @@ Ferramenta para criação e envio de emails personalizados em lote através do M
 
 ### Janela principal
 
-![Janela principal](images/Foto1.png)
+![Janela principal](images/Main.png)
 
 ### Excel
 
